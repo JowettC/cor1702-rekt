@@ -5,7 +5,8 @@
 
 # All statements should only be in functions.
 def gcd_a(x, y):
-    # if y = 0, we got the answer. if y is not 0, we get the remainder of x / y to get the next remainder
-    # we use the remainder to check if x can be equally divided. Since when x % y = 0, we can recurse this
-    # equation to obtain the result.
-    return x if y == 0 else gcd_a(y, x % y)
+    t = x if x < y else y
+    while t != 1:
+        if x % t == 0 and y % t == 0: return t
+        else: t -= 1
+    return t
