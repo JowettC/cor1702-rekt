@@ -5,8 +5,9 @@
 
 # All statements should only be in functions.
 def gcd_a(x, y):
-    t = x if x < y else y
-    while t != 1:
-        if x % t == 0 and y % t == 0: return t
-        else: t -= 1
-    return t
+    # Let's loop from 1 to x's size + 1 instead
+    i = min(x, y)
+    while (x % i or y % i) != 0:  # while modulo x and i or y and i ain't 0, keep iterating
+        i -= 1
+    # Bad result.
+    return i
