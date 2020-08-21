@@ -1,5 +1,5 @@
-# Name: <TODO: replace with your name>
-# Section: <TODO: replace with your section>
+# Name: Nicholas Chen Han Wei
+# Section: G7
 
 # lab1d (Binary/Stein's algo)
 
