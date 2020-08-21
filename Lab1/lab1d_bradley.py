@@ -4,10 +4,11 @@ def gcd_d_bradley(x, y):
     print("x:", x)
     print("y:", y)
 
-    while x and y % 2 == 0:  # while both x and y are even
+    # while x and y % 2 == 0: <= This is not equal to the statement below
+    while x % 2 == 0 and y % 2 == 0: # while both x and y are even
         x = x / 2
         y = y / 2
-        ++k
+        k = k + 1
 
     while x != y:
         if x % 2 == 0:
