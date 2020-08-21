@@ -7,7 +7,7 @@
 # fill up the weight_category method to return either "underweight", "overweight" or "normal" 
 # depending on the height (in cm) and weight (in kg)
 def weight_category(weight, height):
-    bmi = weight / (height ** 2)
+    bmi = weight / ((height / 100) ** 2)
     if bmi <= 0:
         return "incorrect weight/height value!"
 
