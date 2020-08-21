@@ -8,6 +8,7 @@ from lab1a import *
 from lab1b import *
 from lab1c import *
 from lab1d import *
+from lab1d_bradley import *
 
 # run the 6 test cases for gcd_a
 print("True --> test case passed. False --> test case failed\n")
@@ -50,3 +51,12 @@ print("Test case 5 passed :", gcd_d(2, 6) == 2)                 # test case 5. 2
 print("Test case 6 passed :", gcd_d(1000, 1) == 1)              # test case 6. 1
 print()
 
+# run the 6 test cases for gcd_d
+print("Running test cases for Q1(d) Bradley - Binary/Stein's algo:")
+print("Test case 1 passed :", gcd_d_bradley(5352, 6690) == 1338)        # test case 1. 1338
+print("Test case 2 passed :", gcd_d_bradley(7800111, 393945) == 78789)  # test case 2. 78789
+print("Test case 3 passed :", gcd_d_bradley(75116, 6752) == 844)        # test case 3. 844
+print("Test case 4 passed :", gcd_d_bradley(7999992, 1999998) == 1999998)# test case 4. 1999998
+print("Test case 5 passed :", gcd_d_bradley(2, 6) == 2)                 # test case 5. 2
+print("Test case 6 passed :", gcd_d_bradley(1000, 1) == 1)              # test case 6. 1
+print()
