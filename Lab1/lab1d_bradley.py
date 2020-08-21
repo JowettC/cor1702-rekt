@@ -1,5 +1,6 @@
 def gcd_d_bradley(x, y):
     k = 0
+    # https://stackoverflow.com/questions/15112125/how-to-test-multiple-variables-against-a-value
     if 0 in { x, y }: return 1  # immediately exit the user
     print("x:", x)
     print("y:", y)
