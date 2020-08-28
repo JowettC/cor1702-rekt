@@ -7,7 +7,7 @@ from lab2b import *
 import random
 import time
 
-NO_OF_REPETITIONS = 10000                       # change this if you want to reduce the number of times exist is called (line 18 of lab2b.py)
+NO_OF_REPETITIONS = 100                       # change this if you want to reduce the number of times exist is called (line 18 of lab2b.py)
 DATA_FILE_NAME = "employees_birthyear_1mil.csv" # change the data file name if you want to use another data file
                                                 # BUT the test cases below are valid only for employees_birthyear_1mil.csv
 
