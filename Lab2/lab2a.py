@@ -17,8 +17,7 @@ def perform_once(employee_list):
 # This method returns True (if this ID exists), or False otherwise.
 # Modify this method so that it uses a superior algorithm that performs significantly faster.
 def exist(id, employee_list):
-  for i in range(0, len(employee_list)):
-    if employee_list[i] == id:
-      return True
-      
+  if (id > 0) and ((id - 1) < len(employee_list)):
+    return employee_list[id - 1]
+
   return False  # not found
