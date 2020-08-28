@@ -7,8 +7,8 @@ from lab2a import *
 import random
 import time
 
-NO_OF_REPETITIONS = 500000            # change this if you want to reduce the number of times exist() is called (line 17 of lab2a.py)
-DATA_FILE_NAME = "employees_100.csv" # change the data file name to "employees_1mil.csv" if you want to use the larger data set 
+NO_OF_REPETITIONS = 50000            # change this if you want to reduce the number of times exist() is called (line 17 of lab2a.py)
+DATA_FILE_NAME = "employees_1mil.csv" # change the data file name to "employees_1mil.csv" if you want to use the larger data set
 
 # (1) ----- prepare data ------
 employee_list = []

@@ -10,14 +10,11 @@
 # exist() is called many times. You may modify this function if desired, or leave it as it is.
 def perform_once(employee_list):
   # This function takes in employee_list and returns the same employee_list for now.
-  return employee_list
+  return set(employee_list)
 
 # INSTRUCTIONS: 
 # This method is a fully functioning method that uses sequential search to search for the id in employee_list.
 # This method returns True (if this ID exists), or False otherwise.
 # Modify this method so that it uses a superior algorithm that performs significantly faster.
 def exist(id, employee_list):
-  if (id > 0) and ((id - 1) < len(employee_list)):
-    return employee_list[id - 1]
-
-  return False  # not found
+    return True if (id in employee_list) else False
