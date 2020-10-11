@@ -5,7 +5,7 @@
 
 # All statements should only be in functions. Do not include statements outside functions in this file.
 
-
+# 6 = 0110, 8 = 1000
 # Takes in a base-10 integer and returns the base-2 (binary) equivalent as a string
 # this function does NOT have to handle negative numbers (i.e. d will always be >=0)
 # this function must NOT use Python's bin() function.
