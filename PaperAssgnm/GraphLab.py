@@ -552,6 +552,7 @@ def bfs_traversal(v, step=1000, visualize=False):
 
     return total_friends
 
+
 def setVisitedBfs(v, visited, queue, g, q, count=0):
     if v not in visited:
         g.addVertex(v)
@@ -742,7 +743,7 @@ def greedy2(g, step=1000, visualize=False):
             else:
                 path.insert(curr_pos + 1, nearest_to_add)
 
-        # remove vertex from remaining vertexes to add
+                # remove vertex from remaining vertexes to add
         graph.deleteVertex(nearest_to_add)
         q.put(path[:])
     # to make the path go back to its start
