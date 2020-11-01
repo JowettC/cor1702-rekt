@@ -535,34 +535,34 @@ def bfs_traversal(v, step=1000, visualize=False):
     g = Graph()
     visited = []
     queue = []
-    total_friends = 0 # Let's start counting the total number of friends you got.
-    layer = 0  # 0 is always the root, which is your self, followed by your friends (1) and your friends' friends (2).
+    # Visit yourself first, [source, destination]
     setVisitedBfs(v, visited, queue, g, q)
-    while len(queue) > 0:
+    friends = set()  # Let's start counting the total number of friends you got.
+    layer = 1  # 0 is always the root, which is your self, followed by your friends (1) and your friends' friends (2).
+    # Always ensure we won't exceed 3 layers.
+    while len(queue) > 0 and layer < 3:
         v = queue.pop(0)
+        # Loop every friend in the layer.
         for u in v.adjList:
-            total_friends = setVisitedBfs(u[0], visited, queue, g, q, total_friends)
+            # Ensure that the target is not in the set.
+            if u[0] not in friends:
+                setVisitedBfs(u[0], visited, queue, g, q)
+                friends.add(u[0])
 
-        # Always ensure we won't exceed 3 layers.
-        if layer == 2:
-            break
+        layer += 1
     if visualize:
         traversalThread = TraversalDrawer(q, g, step, 'BFS')
         traversalThread.start()
 
-    return total_friends
+    return len(friends)
 
 
-def setVisitedBfs(v, visited, queue, g, q, count=0):
+def setVisitedBfs(v, visited, queue, g, q):
     if v not in visited:
         g.addVertex(v)
-        print("Visited ID: " + str(v))
         visited.append(v)
         q.put(v.value)
         queue.append(v)
-        # After visiting, we should keep track of the count.
-        count += 1
-    return count
 
 
 def topsort(graph):
