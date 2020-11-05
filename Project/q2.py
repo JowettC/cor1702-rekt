@@ -13,6 +13,8 @@
 #   e.g. if n = 2, this is a possible solution: [["P001", "P003"], ["P010"]]
 
 def select_packageSets(n, W, packages):
+    # Just define a fixed dictionary here.
+    package_dict = get_package_dict(packages)
     # Ensure it doesn't exist here.
     populated = set()
 
@@ -25,23 +27,82 @@ def select_packageSets(n, W, packages):
     # https://stackoverflow.com/questions/6142689/initialising-an-array-of-fixed-size-in-python
     set_threshold = [0] * n
     package_sets = []
-    final_set = []
     while len(package_sets) < n:
         package_sets.append([])
 
+    # v1: Generic Greed
     # loop the packages first
-    while len(packages) > 0:
+    # while len(packages) > 0:
+    #     # Obtain the current package
+    #     cur_package = packages.pop()
+    #     if cur_package[0] not in populated:
+    #         # Obtain the least filled package set
+    #         least_filled_index = get_smallest_index(set_threshold)
+    #         if set_threshold[least_filled_index] + cur_package[2] <= W:
+    #             package_sets[least_filled_index].append(cur_package[0])
+    #             set_threshold[least_filled_index] += cur_package[2]
+    #             populated.add(cur_package[0])
+    #         else:
+    #             # Loop every member
+    #             for j in range(n):
+    #                 # If the threshold inclusive of the incoming new package to add is within the weight limit,
+    #                 if set_threshold[j] + cur_package[2] <= W:
+    #                     package_sets[j].append(cur_package[0])
+    #                     set_threshold[j] += cur_package[2]
+    #                     populated.add(cur_package[0])
+    #                     break
+
+    # loop the packages first
+    # push the least profitable packages first.
+
+    package_index = 0
+    while package_index < len(packages):
         # Obtain the current package
-        cur_package = packages.pop()
+        cur_package = packages[package_index]
         if cur_package[0] not in populated:
-            # Loop every member
-            for j in range(n):
-                # If the threshold inclusive of the incoming new package to add is within the weight limit,
-                if set_threshold[j] + cur_package[2] <= W:
-                    package_sets[j].append(cur_package[0])
-                    set_threshold[j] += cur_package[2]
-                    populated.add(cur_package[0])
-                    break
+            # Obtain the least filled package set
+            least_filled_index = get_smallest_index(set_threshold)
+            if set_threshold[least_filled_index] + cur_package[2] <= W:
+                package_sets[least_filled_index].append(cur_package[0])
+                set_threshold[least_filled_index] += cur_package[2]
+                populated.add(cur_package[0])
+            else:
+                # Loop every member
+                for j in range(n):
+                    # If the threshold inclusive of the incoming new package to add is within the weight limit,
+                    if set_threshold[j] + cur_package[2] <= W:
+                        package_sets[j].append(cur_package[0])
+                        set_threshold[j] += cur_package[2]
+                        populated.add(cur_package[0])
+                        break
+
+        package_index += 1
+
+    # Since they're already sorted by profitability, we can traverse and slowly scoop up
+    alternator = 0  # Allows us to fairly alternate between each member.
+    while len(packages) > 0:
+        package = packages.pop(0)
+        valueMergeSort(package_sets[alternator])
+
+        # Iterate from the worst profitable packages first and see if they can potentially be
+        # replaced for better profitability.
+        for i in range(len(package_sets[alternator])):
+            # Without addition, it might be possible as well.
+            if set_threshold[alternator] + package[2] <= W:
+                package_sets[alternator].append(package[0])
+                populated.add(package[0])
+                set_threshold += package[2]
+                break
+            # The least profitable package in the current set can be replaced by the current
+            # package for better profitability, we get a better return.
+            elif (set_threshold[alternator] - package_dict[package_sets[alternator][0]][1]) + package[2] <= W:
+                # TODO: Undone
+                print()
+        # Rotate the alternator
+        if alternator + 1 == len(package_sets):
+            alternator = 0
+        else:
+            alternator += 1
 
     # return [[P001, P003], [P011, P007], [P004, P005, P006], [P012]]
     return package_sets
@@ -130,6 +191,14 @@ def all_have_exceeded(thresholds, val, lim):
     return True
 
 
+def get_package_dict(packages):
+    res = {}
+    for package in packages:
+        res[package[0]] = package[1:]
+
+    return res
+
+
 def valueMergeSort(arr):
     if len(arr) > 1:
         mid = len(arr) // 2  # Finding the mid of the array
@@ -179,6 +248,39 @@ def weightedMergeSort(arr):
         while i < len(L) and j < len(R):
             # Profitability = reward/weight
             if L[i][2] < R[j][2]:
+                arr[k] = L[i]
+                i += 1
+            else:
+                arr[k] = R[j]
+                j += 1
+            k += 1
+
+        # Checking if any element was left
+        while i < len(L):
+            arr[k] = L[i]
+            i += 1
+            k += 1
+
+        while j < len(R):
+            arr[k] = R[j]
+            j += 1
+
+
+def rewardMergeSort(arr):
+    if len(arr) > 1:
+        mid = len(arr) // 2  # Finding the mid of the array
+        L = arr[:mid]  # Dividing the array elements
+        R = arr[mid:]  # into 2 halves
+
+        valueMergeSort(L)  # Sort the first half
+        valueMergeSort(R)  # Sort the second half
+
+        i = j = k = 0
+
+        # Copy data to temp arrays L[] and R[]
+        while i < len(L) and j < len(R):
+            # Profitability = reward
+            if L[i][1] < R[j][1]:
                 arr[k] = L[i]
                 i += 1
             else:
