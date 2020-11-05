@@ -21,10 +21,6 @@ def select_packageSets(n, W, packages):
     # Worst to Best
     valueMergeSort(packages)
 
-    # Weight-based sorting
-    weight_sorted_packages = packages.copy()
-    weightedMergeSort(weight_sorted_packages)
-
     # We can multi-init like that
     # https://stackoverflow.com/questions/6142689/initialising-an-array-of-fixed-size-in-python
     set_threshold = [0] * n
@@ -43,7 +39,6 @@ def select_packageSets(n, W, packages):
         # If the package in question has already been populated,
         if package[0] in populated:
             # Sort it out.
-            weight_sorted_packages.remove(packages[index])
             del packages[index]
             index = (len(packages) - 1)
         # If the weight does not exceed if threshold with the current package,
@@ -51,25 +46,31 @@ def select_packageSets(n, W, packages):
             set_threshold[curr_index] += package[2]
             package_sets[curr_index].append(package[0])
             populated.add(package[0])
-            weight_sorted_packages.remove(packages[index])
             del packages[index]
+            index -= 1
+        else:
             index -= 1
 
         # If we're done traversing downwards
-        if index < 0 or all_have_exceeded(set_threshold, package[2], W):
-            # We should begin traversing through weight, going by the weight calculation.
-            for i in range(len(weight_sorted_packages) - 1, 0, -1):
-                if weight_sorted_packages[i][0] not in populated and weight_sorted_packages[i][2] + set_threshold[curr_index] < W:
-                    set_threshold[curr_index] += weight_sorted_packages[i][2]
-                    package_sets[curr_index].append(weight_sorted_packages[i][0])
-                    populated.add(weight_sorted_packages[i][0])
-                    packages.remove(weight_sorted_packages[i])
-                    del weight_sorted_packages[i]
-
+        if index == 0 and all_have_exceeded(set_threshold, package[2], W):
             # Since we're done, we can assume we're done.
             index = len(packages) - 1
             final_set.append(package_sets.pop(curr_index))
-            del set_threshold[curr_index]
+
+    # Weight-based sorting
+    weight_sorted_packages = packages.copy()
+    weightedMergeSort(weight_sorted_packages)
+
+    # We should begin traversing through weight, going by the weight calculation.
+    for i in range(len(weight_sorted_packages) - 1, 0, -1):
+        # Always traverse the shortest or smallest list
+        for j in range(len(set_threshold)):
+            if weight_sorted_packages[i][0] not in populated and weight_sorted_packages[i][2] + set_threshold[j] < W:
+                set_threshold[j] += weight_sorted_packages[i][2]
+                package_sets[j].append(weight_sorted_packages[i][0])
+                populated.add(weight_sorted_packages[i][0])
+                packages.remove(weight_sorted_packages[i])
+                del weight_sorted_packages[i]
 
     # curr_set = []
     # threshold = 0
@@ -105,8 +106,6 @@ def select_packageSets(n, W, packages):
     #         index = len(packages) - 1
     #         final_set.append(package_sets.pop(curr_index))
     #         del set_threshold[curr_index]
-
-
 
     # loop the packages first
     # while len(packages) > 0:
