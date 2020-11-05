@@ -29,6 +29,44 @@ def select_packageSets(n, W, packages):
     while len(package_sets) < n:
         package_sets.append([])
 
+    # loop the packages first
+    while len(packages) > 0:
+        # Obtain the current package
+        cur_package = packages.pop()
+        if cur_package[0] not in populated:
+            # Loop every member
+            for j in range(n):
+                # If the threshold inclusive of the incoming new package to add is within the weight limit,
+                if set_threshold[j] + cur_package[2] <= W:
+                    package_sets[j].append(cur_package[0])
+                    set_threshold[j] += cur_package[2]
+                    populated.add(cur_package[0])
+                    break
+
+    # return [[P001, P003], [P011, P007], [P004, P005, P006], [P012]]
+    return package_sets
+
+
+# Systematically have 2 sorted sets, one sorted according to profitability
+# The other sorted according to weight
+# Populate n number of members in a distributed manner.
+def select_packageSets_ptw(n, W, packages):
+    # Ensure it doesn't exist here.
+    populated = set()
+
+    # Split into chunks, sort them via profitability.
+    # Profitability = reward/weight
+    # Worst to Best
+    valueMergeSort(packages)
+
+    # We can multi-init like that
+    # https://stackoverflow.com/questions/6142689/initialising-an-array-of-fixed-size-in-python
+    set_threshold = [0] * n
+    package_sets = []
+    final_set = []
+    while len(package_sets) < n:
+        package_sets.append([])
+
     index = len(packages) - 1
     while len(package_sets) > 0:
         # Always traverse the shortest or smallest list
@@ -72,57 +110,7 @@ def select_packageSets(n, W, packages):
                 packages.remove(weight_sorted_packages[i])
                 del weight_sorted_packages[i]
 
-    # curr_set = []
-    # threshold = 0
-    # index = len(packages) - 1
-    # while len(package_sets) > 0:
-    #     # Always traverse the shortest or smallest list
-    #     curr_index = get_smallest_index(package_sets)
-    #     # Obtain the package with the current greatest weight
-    #     package = packages[index]
-    #
-    #     # If the package in question has already been populated,
-    #     if package[0] in populated:
-    #         # Sort it out.
-    #         del packages[index]
-    #         index = (len(packages) - 1)
-    #     elif set_threshold[curr_index] + package[2] < W:
-    #         set_threshold[curr_index] += package[2]
-    #         package_sets[curr_index].append(package[0])
-    #         populated.add(package[0])
-    #         del packages[index]
-    #         index -= 1
-    #     else:
-    #         packages.append(package)
-    #         if index - 1 >= 0:
-    #             index -= 1
-    #         else:
-    #             final_set.append(package_sets.pop(curr_index))
-    #             del set_threshold[curr_index]
-    #
-    #     # If we're done traversing downwards or if the threshold + least profitable package
-    #     if index < 0 or set_threshold[curr_index] + packages[0][2] > W:
-    #         # Reset and push
-    #         index = len(packages) - 1
-    #         final_set.append(package_sets.pop(curr_index))
-    #         del set_threshold[curr_index]
-
-    # loop the packages first
-    # while len(packages) > 0:
-    #     # Obtain the current package
-    #     cur_package = packages.pop()
-    #     if cur_package[0] not in populated:
-    #         # Loop every member
-    #         for j in range(n):
-    #             # If the threshold inclusive of the incoming new package to add is within the weight limit,
-    #             if set_threshold[j] + cur_package[2] <= W:
-    #                 package_sets[j].append(cur_package[0])
-    #                 set_threshold[j] += cur_package[2]
-    #                 populated.add(cur_package[0])
-    #                 break
-
-    # return [[P001, P003], [P011, P007], [P004, P005, P006], [P012]]
-    return final_set
+    # ============================== END of profitability-then-weight method ============================== #
 
 
 # you may insert other functions here, but all statements must be within functions
