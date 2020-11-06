@@ -15,8 +15,9 @@
 def select_packageSets(n, W, packages):
     # Just define a fixed dictionary here.
     package_dict = get_package_dict(packages)
+    unused_packages = []
     # Ensure it doesn't exist here.
-    populated = set()
+    used_packages = set()
 
     # Split into chunks, sort them via profitability.
     # Profitability = reward/weight
@@ -54,18 +55,17 @@ def select_packageSets(n, W, packages):
 
     # loop the packages first
     # push the least profitable packages first.
-
     package_index = 0
     while package_index < len(packages):
         # Obtain the current package
         cur_package = packages[package_index]
-        if cur_package[0] not in populated:
+        if cur_package[0] not in used_packages:
             # Obtain the least filled package set
             least_filled_index = get_smallest_index(set_threshold)
             if set_threshold[least_filled_index] + cur_package[2] <= W:
                 package_sets[least_filled_index].append(cur_package[0])
                 set_threshold[least_filled_index] += cur_package[2]
-                populated.add(cur_package[0])
+                used_packages.add(cur_package[0])
             else:
                 # Loop every member
                 for j in range(n):
@@ -73,7 +73,7 @@ def select_packageSets(n, W, packages):
                     if set_threshold[j] + cur_package[2] <= W:
                         package_sets[j].append(cur_package[0])
                         set_threshold[j] += cur_package[2]
-                        populated.add(cur_package[0])
+                        used_packages.add(cur_package[0])
                         break
 
         package_index += 1
@@ -85,25 +85,34 @@ def select_packageSets(n, W, packages):
         package = packages.pop(0)
         # valueMergeSort(package_sets[alternator])
 
-        if package[0] not in populated:
+        # Ensure this package is not used.
+        if package[0] not in used_packages:
+            pushed = False
+
             # Iterate from the worst profitable packages first and see if they can potentially be
             # replaced for better profitability.
             for i in range(len(package_sets[alternator])):
                 # Without addition, it might be possible as well.
                 if set_threshold[alternator] + package[2] <= W:
                     package_sets[alternator].append(package[0])
-                    populated.add(package[0])
+                    used_packages.add(package[0])
                     set_threshold[alternator] += package[2]
+                    pushed = True
                     break
                 # If not, it might be possible for addition with deletion.
                 # The least profitable package in the current set can be replaced by the current
                 # package for better profitability, we get a better return.
                 elif (set_threshold[alternator] - package_dict[package_sets[alternator][i]][1]) + package[2] <= W:
                     package_sets[alternator].append(package[0])
-                    populated.add(package[0])
+                    used_packages.add(package[0])
                     set_threshold[alternator] += (package[2] - package_dict[package_sets[alternator][i]][1])
+                    used_packages.remove(package_sets[alternator][i])
                     del package_sets[alternator][i]
+                    pushed = True
                     break
+
+            if not pushed:
+                unused_packages.append(package)
 
             # Rotate the sub-alternator
             if sub_altnerators[alternator] + 1 == len(package_sets[alternator]):
@@ -116,6 +125,20 @@ def select_packageSets(n, W, packages):
                 alternator = 0
             else:
                 alternator += 1
+
+    remaining_gap = W * n
+    for threshold in set_threshold:
+        remaining_gap -= threshold
+
+    # Loop every sub-complete set
+    for i in range(len(package_sets)):
+        package_set = package_sets[i]
+
+        for u_pack in unused_packages:
+            if u_pack[2] + set_threshold[i] <= W:
+                package_set.append(u_pack[0])
+        # Loop every package in the set
+        # for package in package_set:
 
     # return [[P001, P003], [P011, P007], [P004, P005, P006], [P012]]
     return package_sets
@@ -310,3 +333,21 @@ def rewardMergeSort(arr):
         while j < len(R):
             arr[k] = R[j]
             j += 1
+
+
+# def package_sort(package_sets, set_thresholds):
+#     sorted_package_sets = []
+#     sorted_set_threshold = []
+#
+#     # Sort the sets according to thresholds first
+#     for i in range(len(set_thresholds)):
+#         if len(sorted_set_threshold) == 0:
+#             sorted_set_threshold.append(set_thresholds[i])
+#             sorted_package_sets.append(package_sets[i])
+#         else:
+#             for j in range(len(sorted_set_threshold)):
+#                 if sorted_set_threshold[j] > set_thresholds[i]:
+#                     sorted_set_threshold.insert(j, set_thresholds[i])
+#                     sorted_package_sets.insert(j, package_sets[i])
+#
+#     for i in range(len(sorted_set_threshold)):
