@@ -80,29 +80,42 @@ def select_packageSets(n, W, packages):
 
     # Since they're already sorted by profitability, we can traverse and slowly scoop up
     alternator = 0  # Allows us to fairly alternate between each member.
+    sub_altnerators = [0] * n  # Allow us to alternate
     while len(packages) > 0:
         package = packages.pop(0)
-        valueMergeSort(package_sets[alternator])
+        # valueMergeSort(package_sets[alternator])
 
-        # Iterate from the worst profitable packages first and see if they can potentially be
-        # replaced for better profitability.
-        for i in range(len(package_sets[alternator])):
-            # Without addition, it might be possible as well.
-            if set_threshold[alternator] + package[2] <= W:
-                package_sets[alternator].append(package[0])
-                populated.add(package[0])
-                set_threshold += package[2]
-                break
-            # The least profitable package in the current set can be replaced by the current
-            # package for better profitability, we get a better return.
-            elif (set_threshold[alternator] - package_dict[package_sets[alternator][0]][1]) + package[2] <= W:
-                # TODO: Undone
-                print()
-        # Rotate the alternator
-        if alternator + 1 == len(package_sets):
-            alternator = 0
-        else:
-            alternator += 1
+        if package[0] not in populated:
+            # Iterate from the worst profitable packages first and see if they can potentially be
+            # replaced for better profitability.
+            for i in range(len(package_sets[alternator])):
+                # Without addition, it might be possible as well.
+                if set_threshold[alternator] + package[2] <= W:
+                    package_sets[alternator].append(package[0])
+                    populated.add(package[0])
+                    set_threshold[alternator] += package[2]
+                    break
+                # If not, it might be possible for addition with deletion.
+                # The least profitable package in the current set can be replaced by the current
+                # package for better profitability, we get a better return.
+                elif (set_threshold[alternator] - package_dict[package_sets[alternator][i]][1]) + package[2] <= W:
+                    package_sets[alternator].append(package[0])
+                    populated.add(package[0])
+                    set_threshold[alternator] += (package[2] - package_dict[package_sets[alternator][i]][1])
+                    del package_sets[alternator][i]
+                    break
+
+            # Rotate the sub-alternator
+            if sub_altnerators[alternator] + 1 == len(package_sets[alternator]):
+                sub_altnerators[alternator] = 0
+            else:
+                sub_altnerators[alternator] += 1
+
+            # Rotate the alternator
+            if alternator + 1 == len(package_sets):
+                alternator = 0
+            else:
+                alternator += 1
 
     # return [[P001, P003], [P011, P007], [P004, P005, P006], [P012]]
     return package_sets
