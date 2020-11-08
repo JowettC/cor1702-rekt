@@ -72,7 +72,7 @@ def select_packageSets(n, W, packages):
             set_threshold[i] = 0
 
     packages = unused_packages
-    # for i in range(len(packages) - 1):
+    # for i 1in range(len(packages) - 1):
     #     if packages[i][0] in used_packages:
     #         del packages[i]
     # package_sets[len(package_sets) - 1] = select_packageSet(W, packages)
