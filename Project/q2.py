@@ -11,83 +11,145 @@
 # returns:
 #   2D list of package IDs to represent n sets of packages. 
 #   e.g. if n = 2, this is a possible solution: [["P001", "P003"], ["P010"]]
-from Project.q1 import select_packageSet
+import copy
+import math
+import random
+from itertools import chain
+import numpy as np
 
 
-def select_packageSets(n, W, packages):
-    # Just define a fixed dictionary here.
-    package_dict = get_package_dict(packages)
-    # Ensure it doesn't exist here.
-    used_packages = set()
-
+def select_packageSets(n, W, packages, variations=80):
+    backup_packages = copy.deepcopy(packages)
+    packages_dict = {pkg[0]: pkg for pkg in backup_packages}
     # Split into chunks, sort them via profitability.
     # Profitability = reward/weight
     # Best to worst
-    valueMergeSort(packages)
+    backup_packages.sort(key=lambda x: (x[1]/x[2]), reverse=True)
 
     # Take the best packages till we hit the total weight limit
     weight_total = 0
     max_index = 0
-    for i in range(len(packages)):
+    for i in range(len(backup_packages)):
+        max_index = i
         if weight_total > (W * n):
-            max_index = i
             break
-        weight_total += packages[i][2]
+        weight_total += backup_packages[i][2]
 
-    unused_packages = packages[max_index:]
-    packages = packages[:max_index]
+    p_set_results = []
+    best_score = 0
+    # Method 1: Non-leaky variation
+    # When we're in a scenario where we can never fill the members entirely
+    if max_index == len(backup_packages) - 1:
+        permutations = math.factorial(max_index)
+        while permutations > 0:
+            set_thresholds = [0] * n
+            p_sets = []
+            while len(p_sets) < n:
+                p_sets.append([])
+            for package in backup_packages:
+                c_index = get_avail_member(set_thresholds, W, package[2])
+                pushed = False
 
-    # We can multi-init like that
-    # https://stackoverflow.com/questions/6142689/initialising-an-array-of-fixed-size-in-python
-    set_threshold = [0] * n
-    package_sets = []
-    while len(package_sets) < n:
-        package_sets.append([])
+                if c_index < 0:
+                    break
 
-    # BEGIN FULL BIN PACKING ALGORITHM
-    weightMergeSort(packages)  # Sort by the weight first since we're done filtering out what's nonsense.
-    while len(packages) > 0:
-        # Obtain the biggest package
-        package = packages.pop(0)
+                while not pushed:
+                    if set_thresholds[c_index] + package[2] <= W:
+                        set_thresholds[c_index] += package[2]
+                        p_sets[c_index].append(package[0])
+                        pushed = True
 
-        if package[0] not in used_packages:
-            # Find the first bin that can accommodate
-            first_avail = get_avail_member(set_threshold, W, package[2])
+            permutations -= 1
 
-            package_sets[first_avail].append(package[0])
-            set_threshold[first_avail] += package[2]
-            used_packages.add(package[0])
+            err_msg, mS, wSm = get_mS_and_wSm_q2(p_sets, packages_dict, W)
+            if best_score < mS:
+                best_score = mS
+                p_set_results = copy.deepcopy(p_sets)
 
-    # Check out the thresholds, the last one should be incomplete.
-    for i in range(len(set_threshold)):
-        # Since the threshold is not maxed, lets see if we can max it out.
-        if set_threshold[i] < W:
-            # Clear up
-            for package_id in package_sets[i]:
-                used_packages.remove(package_id)
-                arr = package_dict[package_id]
-                arr.insert(0, package_id)
-                unused_packages.insert(0, arr)
-            package_sets[i].clear()
-            set_threshold[i] = 0
+        return p_sets
+    # Method 2: Leaky variation
+    else:
+        for i in range(variations):
+            unused_packages = backup_packages[max_index + 1:]
+            packages = backup_packages[:max_index]
 
-    packages = unused_packages
-    # for i in range(len(packages) - 1):
-    #     if packages[i][0] in used_packages:
-    #         del packages[i]
-    # package_sets[len(package_sets) - 1] = select_packageSet(W, packages)
-    while len(packages) > 0:
-        # Obtain the biggest package
-        package = packages.pop(0)
+            # We can multi-init like that
+            # https://stackoverflow.com/questions/6142689/initialising-an-array-of-fixed-size-in-python
+            set_threshold = [0] * n
+            package_sets = []
+            while len(package_sets) < n:
+                package_sets.append([])
 
-        # Ensure its never used.
-        if package[0] not in used_packages:
-            if set_threshold[len(package_sets) - 1] + package[2] <= W:
-                package_sets[len(package_sets) - 1].append(package[0])
-                set_threshold[len(package_sets) - 1] += package[2]
-                used_packages.add(package[0])
+            # BEGIN FULL BIN PACKING ALGORITHM
+            random.shuffle(packages)
+            package_index = 0
 
-    return package_sets
+            while len(packages) > package_index:
+                # Obtain the biggest package
+                package = packages[package_index]
+
+                # Find the first bin that can accommodate
+                first_avail = get_avail_member(set_threshold, W, package[2])
+
+                # Always check to ensure we don't exceed the threshold
+                if (set_threshold[first_avail] + package[2] <= W) and not exists(package, package_sets):
+                    package_sets[first_avail].append(package[0])
+                    set_threshold[first_avail] += package[2]
+                elif not exists(package, package_sets):
+                    unused_packages.insert(0, package)
+
+                package_index += 1
+
+            # Check out the last threshold, the last one should be incomplete.
+            # for i in range(len(set_threshold)):
+            # Since the threshold is not maxed, lets see if we can max it out.
+            if set_threshold[n - 1] < W:
+                # Clear up all the packages and add it as unused.
+                for index in range(len(package_sets[n - 1]) - 1, -1, -1):
+                    # Obtain the current package's id first
+                    package_id = package_sets[n - 1][index]
+                    # Search the package database to repopulate the package data into unused_packages again.
+                    for back_pack in backup_packages:
+                        if back_pack[0] == package_id:
+                            unused_packages.insert(0, back_pack)
+                            break
+                package_sets[len(set_threshold) - 1].clear()
+                set_threshold[len(set_threshold) - 1] = 0
+
+            tracked_packages = []
+            remaining_packages = []
+            for i in range(len(unused_packages) - 1):
+                unused_package = unused_packages[i]
+                if unused_package[0] not in tracked_packages and not exists(unused_package, package_sets):
+                    tracked_packages.append(unused_package[0])
+                    remaining_packages.append(unused_package)
+
+            package_sets[len(package_sets) - 1] = select_packageSet(W, remaining_packages)
+
+            err_msg, mS, wSm = get_mS_and_wSm_q2(package_sets, packages_dict, W)
+            if best_score < mS:
+                best_score = mS
+                p_set_results = copy.deepcopy(package_sets)
+
+        # Check
+        # tracked_packages = []
+        # for p_set in package_sets:
+        #     for package in p_set:
+        #         if package in tracked_packages:
+        #             print('Duplicate package detected: ' + package)
+        #         else:
+        #             tracked_packages.append(package)
+
+        return p_set_results
+
+
+# Check for dupes
+def exists(package, package_sets):
+    for package_set in package_sets:
+        for pack in package_set:
+            if pack == package[0]:
+                return True
+    return False
 
 
 # you may insert other functions here, but all statements must be within functions before submitting to red,
@@ -123,68 +185,95 @@ def get_avail_member(thresholds, limit, incoming):
     return -1
 
 
-def valueMergeSort(arr):
-    if len(arr) > 1:
-        mid = len(arr) // 2  # Finding the mid of the array
-        L = arr[:mid]  # Dividing the array elements
-        R = arr[mid:]  # into 2 halves
+# Adapted from q1.
+def select_packageSet(W, packages):
+    val = []
+    wt = []
+    package = []
+    package_select = []
 
-        valueMergeSort(L)  # Sort the first half
-        valueMergeSort(R)  # Sort the second half
+    for i in range(len(packages)):
+        val.append(packages[i][1])
+        wt.append(packages[i][2])
+        package.append(packages[i][0])
 
-        i = j = k = 0
+    n = len(val)
 
-        # Copy data to temp arrays L[] and R[]
-        while i < len(L) and j < len(R):
-            # Profitability = reward/weight
-            if L[i][1] / L[i][2] > R[j][1] / R[j][2]:
-                # if (L[i][2] < R[j][2]) or (L[i][2] == R[j][2] and L[i][1] / L[i][2] < R[j][1] / R[j][2]):
-                arr[k] = L[i]
-                i += 1
+    selected_wt_index = knapSack(W, wt, val, n)
+
+    for wt_index in selected_wt_index:
+        package_select.append(package[wt_index])
+
+    return (package_select)
+
+
+def knapSack(W, wt, val, n):
+    selected_weight = []
+
+    K = [[0 for x in range(W + 1)] for x in range(n + 1)]
+
+    # Build table K[][] in bottom up manner
+    for i in range(n + 1):
+        for w in range(W + 1):
+            if i == 0 or w == 0:
+                K[i][w] = 0
+            elif wt[i - 1] <= w:
+                K[i][w] = max(val[i - 1]
+                              + K[i - 1][w - wt[i - 1]],
+                              K[i - 1][w])
             else:
-                arr[k] = R[j]
-                j += 1
-            k += 1
+                K[i][w] = K[i - 1][w]
+                # print(K)
 
-        # Checking if any element was left
-        while i < len(L):
-            arr[k] = L[i]
-            i += 1
-            k += 1
+    # return K[n][W]
+    while K[n][W] != 0:
+        if K[n][W] != K[n - 1][W]:
+            selected_weight.append(n - 1)
+            W -= wt[n - 1]
+        n -= 1
 
-        while j < len(R):
-            arr[k] = R[j]
-            j += 1
+    return selected_weight
 
 
-def weightMergeSort(arr):
-    if len(arr) > 1:
-        mid = len(arr) // 2  # Finding the mid of the array
-        L = arr[:mid]  # Dividing the array elements
-        R = arr[mid:]  # into 2 halves
+# for Q2
+# checks if your answer (packageSet) has syntax errors
+def get_syntax_error_msg_q2(your_packageSet):
+    if type(your_packageSet) != list:
+        return "Your answer is not a list. Your route must be a list of package IDs"
 
-        weightMergeSort(L)  # Sort the first half
-        weightMergeSort(R)  # Sort the second half
+    selPackages = list(chain(*your_packageSet))
+    if not all(type(elem) == str for elem in selPackages):
+        return "Your answer must be a list of strings (packageIDs) only."
 
-        i = j = k = 0
+    # check if there are duplicate flagIDs in your_route
+    if len(selPackages) != len(set(selPackages)):
+        return "There are duplicate package IDs in your package selection. packageIDs in your package selection must be unique."
 
-        # Copy data to temp arrays L[] and R[]
-        while i < len(L) and j < len(R):
-            # weight
-            if L[i][2] > R[j][2]:
-                arr[k] = L[i]
-                i += 1
-            else:
-                arr[k] = R[j]
-                j += 1
-            k += 1
+    return None  # all ok
 
-        # Checking if any element was left
-        while i < len(L):
-            arr[k] = L[i]
-            i += 1
-            k += 1
 
-        while j < len(R):
-            arr[k] = R[j]
-            j += 1
+# for Q2
+# used for computing quality score for Q2
+# will return error message (string) if there is an error
+# returns error_msg (or None if all ok), score (the minimum among members’ sum of rewards), members' sum of weights  (for comparison with W)
+def get_mS_and_wSm_q2(your_packageSet, packages_dict, W):
+    # check for syntax error first
+    err_msg = get_syntax_error_msg_q2(your_packageSet)
+    if err_msg != None:
+        return err_msg, 0, 0
+
+    # calculate
+    #   mS: the minimum among members’ sum of rewards
+    #   wSm: members' sum of weights
+    mS, wSm = 1e400, []
+    for m_pkg in your_packageSet:  # edited
+        rS, wS = 0, 0
+        for pid in m_pkg:
+            if not pid in packages_dict:
+                return "Package ID in your package selection is not valid : " + pid, 0, 0  # error
+            rS += packages_dict[pid][1]
+            wS += packages_dict[pid][2]
+        if rS < mS:
+            mS = rS
+        wSm.append(wS)
+    return None, mS, wSm  # no error

@@ -12,25 +12,17 @@
 #   1D list of package IDs to represent a package selection. e.g. ["P001", "P003, "P010]
 
 def select_packageSet(W, packages):
-    
-    val = []
-    wt = []
-    package = []
+    val = [package[1] for package in packages]
+    wt = [package[2] for package in packages]
+    package = [package[0] for package in packages]
     package_select = []
     
-    for i in range(len(packages)):
-        val.append(packages[i][1])
-        wt.append(packages[i][2])
-        package.append(packages[i][0])
-        
-    n = len(val)
-    
-    selected_wt_index = knapSack(W, wt, val, n)
+    selected_wt_index = knapSack(W, wt, val, len(val))
     
     for wt_index in selected_wt_index:
         package_select.append(package[wt_index])
         
-    return(package_select)
+    return package_select
     
 
 def knapSack(W, wt, val, n): 
