@@ -15,8 +15,6 @@ import copy
 import math
 import random
 from itertools import chain
-import numpy as np
-
 
 def select_packageSets(n, W, packages, variations=80):
     backup_packages = copy.deepcopy(packages)
@@ -40,13 +38,13 @@ def select_packageSets(n, W, packages, variations=80):
     # Method 1: Non-leaky variation
     # When we're in a scenario where we can never fill the members entirely
     if max_index == len(backup_packages) - 1:
-        permutations = math.factorial(max_index)
-        while permutations > 0:
+        generated_shuffles = gen_unique_shuffles(backup_packages[:max_index], variations)
+        for generated_shuffle in generated_shuffles:
             set_thresholds = [0] * n
             p_sets = []
             while len(p_sets) < n:
                 p_sets.append([])
-            for package in backup_packages:
+            for package in generated_shuffle:
                 c_index = get_avail_member(set_thresholds, W, package[2])
                 pushed = False
 
@@ -59,16 +57,15 @@ def select_packageSets(n, W, packages, variations=80):
                         p_sets[c_index].append(package[0])
                         pushed = True
 
-            permutations -= 1
-
             err_msg, mS, wSm = get_mS_and_wSm_q2(p_sets, packages_dict, W)
             if best_score < mS:
                 best_score = mS
                 p_set_results = copy.deepcopy(p_sets)
 
-        return p_sets
+        return p_set_results
     # Method 2: Leaky variation
     else:
+        unique_sets = []
         for i in range(variations):
             unused_packages = backup_packages[max_index + 1:]
             packages = backup_packages[:max_index]
@@ -81,7 +78,7 @@ def select_packageSets(n, W, packages, variations=80):
                 package_sets.append([])
 
             # BEGIN FULL BIN PACKING ALGORITHM
-            random.shuffle(packages)
+            gen_unique_shuffle(packages, unique_sets)
             package_index = 0
 
             while len(packages) > package_index:
@@ -150,6 +147,39 @@ def exists(package, package_sets):
             if pack == package[0]:
                 return True
     return False
+
+
+def gen_unique_shuffle(packages, shuffles):
+    while True:
+        random.shuffle(packages)
+
+        found = False
+        for shuffle in shuffles:
+            found = packages == shuffle
+
+        if not found:
+            shuffles.append(packages)
+            return packages
+
+
+def gen_unique_shuffles(packages, shuffles=50):
+    if math.factorial(len(packages)) < shuffles:
+        shuffles = math.factorial(len(packages))
+
+    results = [copy.deepcopy(packages)]
+    while shuffles > 0:
+        found = False
+        random.shuffle(packages)
+
+        for results_item in results:
+            if results_item == packages:
+                found = True
+                break
+
+        if not found:
+            results.append(copy.deepcopy(packages))
+            shuffles -= 1
+    return results
 
 
 # you may insert other functions here, but all statements must be within functions before submitting to red,
