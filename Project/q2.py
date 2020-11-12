@@ -54,31 +54,6 @@ def select_packageSets(n, W, packages, variations=200):
             set_rewards[i] += package[1]
             del avail_package_dict[package[0]]
 
-    differential = (n * W) - sum(set_thresholds)
-
-    if differential > 0:
-        valid_packages = []
-        for package in avail_package_dict:
-            if avail_package_dict[package][1] <= differential:
-                valid_packages.append((package, avail_package_dict[package][0], avail_package_dict[package][1]))
-
-        if len(valid_packages) > 0:
-            # Need to find all the sets with gaps
-            non_full_set_indexes = get_non_full_set_indexes(set_thresholds, W)
-
-            # Empty all the non-full sets first
-            for index in non_full_set_indexes:
-                cur_set = p_sets[index]
-
-                while len(cur_set) > 0:
-                    cur_set_item = cur_set.pop()
-                    valid_packages.insert(0, (cur_set_item, readonly_package_dict[cur_set_item][0],
-                                              readonly_package_dict[cur_set_item][1]))
-                    set_thresholds[index] -= readonly_package_dict[cur_set_item][1]
-                    set_rewards[index] -= readonly_package_dict[cur_set_item][0]
-
-            # Then perform best fit
-
     return p_sets
 
 
