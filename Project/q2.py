@@ -16,7 +16,7 @@ import math
 import random
 from itertools import chain
 
-def select_packageSets(n, W, packages, variations=80):
+def select_packageSets(n, W, packages, variations=200):
     backup_packages = copy.deepcopy(packages)
     packages_dict = {pkg[0]: pkg for pkg in backup_packages}
     # Split into chunks, sort them via profitability.
@@ -40,12 +40,13 @@ def select_packageSets(n, W, packages, variations=80):
     if max_index == len(backup_packages) - 1:
         generated_shuffles = gen_unique_shuffles(backup_packages[:max_index], variations)
         for generated_shuffle in generated_shuffles:
+            alternator = [0] * n
             set_thresholds = [0] * n
             p_sets = []
             while len(p_sets) < n:
                 p_sets.append([])
             for package in generated_shuffle:
-                c_index = get_avail_member(set_thresholds, W, package[2])
+                c_index = get_next_avail_member(alternator, set_thresholds, W, package[2])
                 pushed = False
 
                 if c_index < 0:
@@ -70,6 +71,7 @@ def select_packageSets(n, W, packages, variations=80):
             unused_packages = backup_packages[max_index + 1:]
             packages = backup_packages[:max_index]
 
+            alternator = [0] * n
             # We can multi-init like that
             # https://stackoverflow.com/questions/6142689/initialising-an-array-of-fixed-size-in-python
             set_threshold = [0] * n
@@ -86,7 +88,7 @@ def select_packageSets(n, W, packages, variations=80):
                 package = packages[package_index]
 
                 # Find the first bin that can accommodate
-                first_avail = get_avail_member(set_threshold, W, package[2])
+                first_avail = get_next_avail_member(alternator, set_threshold, W, package[2])
 
                 # Always check to ensure we don't exceed the threshold
                 if (set_threshold[first_avail] + package[2] <= W) and not exists(package, package_sets):
@@ -207,9 +209,20 @@ def get_package_dict(packages):
     return res
 
 
+# First fit, Best fit algo traverser
 def get_avail_member(thresholds, limit, incoming):
     for i in range(len(thresholds)):
         if thresholds[i] + incoming <= limit:
+            return i
+
+    return -1
+
+
+# Next fit traverser
+def get_next_avail_member(alternator, thresholds, limit, incoming):
+    for i in range(len(alternator)):
+        if thresholds[i] + incoming <= limit:
+            alternator[i] += 1
             return i
 
     return -1
