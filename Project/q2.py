@@ -59,10 +59,25 @@ def select_packageSets(n, W, packages, variations=200):
                 set_rewards[i] += package[1]
                 del avail_packages[avail_packages.index(package)]
 
-    # differential = (n * W) - sum(set_thresholds)
     # while can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages):
     #     print()
+
     reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
+
+    while True:
+        # differential = (n * W) - sum(set_thresholds)
+        can_fit = can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages)
+        least_filled_set_index = get_least_filled_set_index(set_thresholds)
+        if least_filled_set_index < 0 and not can_fit:
+            break
+        one_last_time = get_best_fit_in_set(set_thresholds[least_filled_set_index], avail_packages, W)
+        if one_last_time is None and not can_fit:
+            break
+        if one_last_time is not None:
+            p_sets[least_filled_set_index].append(one_last_time[0])
+            set_rewards[least_filled_set_index] += one_last_time[1]
+            set_thresholds[least_filled_set_index] += one_last_time[2]
+            avail_packages.remove(one_last_time)
 
     return p_sets
 
@@ -101,6 +116,15 @@ def get_non_full_set_indexes(thresholds, limit):
             non_full_set_indexes.append(i)
 
     return non_full_set_indexes
+
+
+def get_best_fit_in_set(threshold, available_packages, limit):
+    available_packages.sort(key=lambda x: (x[1] / x[2]), reverse=True)
+    for package in available_packages:
+        if threshold + package[2] <= limit:
+            return package
+
+    return None
 
 
 def can_still_fit(thresholds, available_packages, limit):
@@ -145,7 +169,7 @@ def reduce_deviation(package_dict, p_sets, set_thresholds, set_rewards, W):
     set_combinations_left = choose(len(p_sets), 2)
     lower = 0
     upper = lower + 1
-    while reward_sd > 10 and set_combinations_left > 0:
+    while set_combinations_left > 0:
         least_reward_index = set_reward_ranking[lower]
         lower_set_threshold = set_thresholds[least_reward_index]
         least_reward_set_reward = set_rewards[least_reward_index] + 0
