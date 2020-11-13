@@ -41,7 +41,7 @@ def select_packageSets(n, W, packages, variations=200):
         p_sets.append([])
 
     if max_index == len(packages) - 1:
-        packages.sort(key=lambda x: x[1], reverse=True)
+        packages.sort(key=lambda x: (x[1]), reverse=True)
     elif max_index < len(packages) - 1:
         overflowing_packages = packages[max_index + 1:]
         overflowing_packages.sort(key=lambda x: x[1], reverse=True)
@@ -59,25 +59,39 @@ def select_packageSets(n, W, packages, variations=200):
                 set_rewards[i] += package[1]
                 del avail_packages[avail_packages.index(package)]
 
-    # while can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages):
-    #     print()
-
+    old_deviation = numpy.std(set_rewards)
     reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
+    cur_deviation = numpy.std(set_rewards)
+    if max_index < len(packages) - 1:
+        while True:
+            can_fit = can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages)
+            least_filled_set_index = get_least_filled_set_index(set_thresholds)
+            if least_filled_set_index < 0 and not can_fit:
+                break
+            one_last_time = get_best_fit_in_set(set_thresholds[least_filled_set_index], avail_packages, W)
+            if one_last_time is None and not can_fit:
+                break
+            if one_last_time is not None:
+                p_sets[least_filled_set_index].append(one_last_time[0])
+                set_rewards[least_filled_set_index] += one_last_time[1]
+                set_thresholds[least_filled_set_index] += one_last_time[2]
+                avail_packages.remove(one_last_time)
 
-    while True:
-        # differential = (n * W) - sum(set_thresholds)
+            if not fill_smallest(readonly_package_dict, avail_packages, p_sets, set_thresholds, set_rewards, W):
+                break
+
+        new_deviation = numpy.std(set_rewards)
+        if new_deviation >= cur_deviation:
+            while True:
+                prev_deviation = numpy.std(set_rewards)
+                reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
+                new_deviation = numpy.std(set_rewards)
+
+                if prev_deviation == new_deviation:
+                    break
+
         can_fit = can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages)
-        least_filled_set_index = get_least_filled_set_index(set_thresholds)
-        if least_filled_set_index < 0 and not can_fit:
-            break
-        one_last_time = get_best_fit_in_set(set_thresholds[least_filled_set_index], avail_packages, W)
-        if one_last_time is None and not can_fit:
-            break
-        if one_last_time is not None:
-            p_sets[least_filled_set_index].append(one_last_time[0])
-            set_rewards[least_filled_set_index] += one_last_time[1]
-            set_thresholds[least_filled_set_index] += one_last_time[2]
-            avail_packages.remove(one_last_time)
+        print(can_fit)
 
     return p_sets
 
@@ -162,8 +176,25 @@ def get_most_filled_set_index(thresholds):
     return biggest_threshold[0]
 
 
+def compute_threshold(package_dict, p_set):
+    threshold = 0
+    for p in p_set:
+        if p in package_dict.keys():
+            threshold += package_dict[p][1]
+
+    return threshold
+
+
+def compute_reward(package_dict, p_set):
+    reward = 0
+    for p in p_set:
+        if p in package_dict.keys():
+            reward += package_dict[p][0]
+
+    return reward
+
+
 def reduce_deviation(package_dict, p_sets, set_thresholds, set_rewards, W):
-    # set_threshold_ranking = numpy.argsort(set_thresholds)
     reward_sd = numpy.std(set_rewards)
     set_reward_ranking = numpy.argsort(set_rewards)
     set_combinations_left = choose(len(p_sets), 2)
@@ -251,6 +282,41 @@ def reduce_deviation(package_dict, p_sets, set_thresholds, set_rewards, W):
             upper += 1
 
 
+def fill_smallest(package_dict, avail_packages, p_sets, set_thresholds, set_rewards, W):
+    set_threshold_ranking = numpy.argsort(set_thresholds)
+
+    if len(set_threshold_ranking) >= 2:
+        lightest_index = set_threshold_ranking[0]
+        heavier_index = set_threshold_ranking[1]
+
+        # Drain and fit
+        smaller_package_set = regenerate_set(package_dict, p_sets[lightest_index] + p_sets[heavier_index])
+        heavier_package_set = select_packageSet(W, smaller_package_set)
+        smaller_set_threshold = sum([package[2] for package in smaller_package_set])
+        smaller_package_set = [package[0] for package in smaller_package_set]
+
+        # Get the heavier out of the way first
+        set_thresholds[heavier_index] = compute_threshold(package_dict, heavier_package_set)
+        set_rewards[heavier_index] = compute_reward(package_dict, heavier_package_set)
+        p_sets[heavier_index] = heavier_package_set
+
+        # Additional fit
+        for package in avail_packages:
+            if package[2] + smaller_set_threshold <= W:
+                smaller_set_threshold += package[2]
+                smaller_package_set.append(package[0])
+
+        set_thresholds[lightest_index] = smaller_set_threshold
+        set_rewards[lightest_index] = compute_reward(package_dict, smaller_package_set)
+        p_sets[lightest_index] = smaller_package_set
+
+        if can_still_fit([set_thresholds[lightest_index], set_thresholds[heavier_index]], avail_packages, W):
+            return True
+        else:
+            return False
+    return False
+
+
 def regenerate_set(package_dict, p_set):
     res = []
 
@@ -270,3 +336,47 @@ def choose(n, k):
         return 0
     else:
         return choose(n - 1, k - 1) + choose(n - 1, k)
+
+
+# Adapted from Q1.
+def select_packageSet(W, packages):
+    val = [package[1] for package in packages]
+    wt = [package[2] for package in packages]
+    package = [package[0] for package in packages]
+    package_select = []
+
+    selected_wt_index = knapSack(W, wt, val, len(val))
+
+    for wt_index in selected_wt_index:
+        package_select.append(package[wt_index])
+        del packages[wt_index]
+
+    return package_select
+
+
+def knapSack(W, wt, val, n):
+    selected_weight = []
+
+    K = [[0 for x in range(W + 1)] for x in range(n + 1)]
+
+    # Build table K[][] in bottom up manner
+    for i in range(n + 1):
+        for w in range(W + 1):
+            if i == 0 or w == 0:
+                K[i][w] = 0
+            elif wt[i - 1] <= w:
+                K[i][w] = max(val[i - 1]
+                              + K[i - 1][w - wt[i - 1]],
+                              K[i - 1][w])
+            else:
+                K[i][w] = K[i - 1][w]
+                # print(K)
+
+    # return K[n][W]
+    while K[n][W] != 0:
+        if K[n][W] != K[n - 1][W]:
+            selected_weight.append(n - 1)
+            W -= wt[n - 1]
+        n -= 1
+
+    return selected_weight
