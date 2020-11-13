@@ -158,15 +158,18 @@ def reduce_deviation(package_dict, p_sets, set_thresholds, set_rewards, W):
             new_reward_sd = orig_reward_sd + 0
 
             least_reward_set = regenerate_set(package_dict, p_sets[least_reward_index])
-            least_reward_set.sort(key=lambda x: (x[1]))
+            least_reward_set.sort(key=lambda x: (x[2]))
             most_reward_set = regenerate_set(package_dict, p_sets[most_reward_index])
-            most_reward_set.sort(key=lambda x: (x[1]))
+            most_reward_set.sort(key=lambda x: (x[2]))
 
             iter_allowed = len(p_sets[least_reward_index]) * len(p_sets[most_reward_index])
             set_lower = 0
-            set_upper = lower + 1
-            while new_reward_sd >= orig_reward_sd and iter_allowed > 0:
+            set_upper = 0
+            while new_reward_sd >= orig_reward_sd and iter_allowed > 0 and len(least_reward_set) > 0 \
+                    and len(most_reward_set) > 0:
                 lrs_least_profitable = least_reward_set.pop(set_lower)
+                if set_upper >= len(most_reward_set):
+                    print()
                 mrs_least_profitable = most_reward_set.pop(set_upper)
 
                 if (lrs_least_profitable[1] / lrs_least_profitable[2]) < (mrs_least_profitable[1] / mrs_least_profitable[2]) \
@@ -197,15 +200,17 @@ def reduce_deviation(package_dict, p_sets, set_thresholds, set_rewards, W):
 
                 iter_allowed -= 1
 
-                if set_upper == len(most_reward_set) - 1:
+                if set_upper == len(most_reward_set) - 1 and set_lower + 1 < len(least_reward_set):
                     set_lower += 1
                     set_upper = 0
-                else:
+                elif set_upper + 1 < len(most_reward_set):
                     set_upper += 1
+                else:
+                    break
 
             if new_reward_sd < orig_reward_sd:
-                p_sets[least_reward_index] = least_reward_set
-                p_sets[most_reward_index] = most_reward_set
+                p_sets[least_reward_index] = [tuple[0] for tuple in least_reward_set]
+                p_sets[most_reward_index] = [tuple[0] for tuple in most_reward_set]
 
                 set_thresholds[least_reward_index] = lower_set_threshold
                 set_thresholds[most_reward_index] = upper_set_threshold
@@ -226,7 +231,10 @@ def regenerate_set(package_dict, p_set):
     res = []
 
     for i in p_set:
-        res.append((i, package_dict[i][0], package_dict[i][1]))
+        if i in package_dict.keys():
+            res.append((i, package_dict[i][0], package_dict[i][1]))
+        else:
+            print("Critical! Key " + str(i) + " missing!")
 
     return res
 
