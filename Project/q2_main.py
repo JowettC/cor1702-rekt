@@ -8,7 +8,7 @@ from q2 import *
 import time, os
 from itertools import chain
 
-packages_csv = "./data/m_packages_5_165.csv"  ## <-- change!!!
+packages_csv = "./data/m_packages_12_1000000.csv"  ## <-- change!!!
 
 fn = os.path.basename(packages_csv)
 _, _, _n, _W = fn[:-len('.csv')].split('_')

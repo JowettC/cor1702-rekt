@@ -16,7 +16,7 @@ import numpy
 import sys
 
 
-def select_packageSets(n, W, packages, variations=200):
+def select_packageSets(n, W, packages):
     readonly_package_dict = {pkg[0]: pkg[1:] for pkg in packages}
     avail_packages = copy.deepcopy(packages)
     # Split into chunks, sort them via profitability.
@@ -41,7 +41,7 @@ def select_packageSets(n, W, packages, variations=200):
         p_sets.append([])
 
     if max_index == len(packages) - 1:
-        packages.sort(key=lambda x: (x[1]), reverse=True)
+        packages.sort(key=lambda x: (x[2]), reverse=True)
     elif max_index < len(packages) - 1:
         overflowing_packages = packages[max_index + 1:]
         overflowing_packages.sort(key=lambda x: x[1], reverse=True)
@@ -59,39 +59,53 @@ def select_packageSets(n, W, packages, variations=200):
                 set_rewards[i] += package[1]
                 del avail_packages[avail_packages.index(package)]
 
-    old_deviation = numpy.std(set_rewards)
-    reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
-    cur_deviation = numpy.std(set_rewards)
-    if max_index < len(packages) - 1:
-        while True:
-            can_fit = can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages)
-            least_filled_set_index = get_least_filled_set_index(set_thresholds)
-            if least_filled_set_index < 0 and not can_fit:
-                break
-            one_last_time = get_best_fit_in_set(set_thresholds[least_filled_set_index], avail_packages, W)
-            if one_last_time is None and not can_fit:
-                break
-            if one_last_time is not None:
-                p_sets[least_filled_set_index].append(one_last_time[0])
-                set_rewards[least_filled_set_index] += one_last_time[1]
-                set_thresholds[least_filled_set_index] += one_last_time[2]
-                avail_packages.remove(one_last_time)
+    fresh_deviation = numpy.std(set_rewards)
+    fresh_set = copy.deepcopy(p_sets)
+    fresh_thresholds = copy.deepcopy(set_thresholds)
+    fresh_rewards = copy.deepcopy(set_rewards)
 
-            if not fill_smallest(readonly_package_dict, avail_packages, p_sets, set_thresholds, set_rewards, W):
-                break
+    while can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages):
+        shifted_deviation = numpy.std(set_rewards)
+        if shifted_deviation > fresh_deviation:
+            reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
 
+        least_filled_set_index = get_least_filled_set_index(set_thresholds)
+        if least_filled_set_index < 0 and not can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages):
+            break
+        one_last_time = get_best_fit_in_set(set_thresholds[least_filled_set_index], avail_packages, W)
+        if one_last_time is None and not can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages):
+            break
+        if one_last_time is not None:
+            p_sets[least_filled_set_index].append(one_last_time[0])
+            set_rewards[least_filled_set_index] += one_last_time[1]
+            set_thresholds[least_filled_set_index] += one_last_time[2]
+            avail_packages.remove(one_last_time)
+
+        if not fill_smallest(readonly_package_dict, avail_packages, p_sets, set_thresholds, set_rewards,
+                             W) and not can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages):
+            break
+        else:
+            skewer(readonly_package_dict, p_sets, set_thresholds, set_rewards, W, avail_packages)
+
+        if shifted_deviation == numpy.std(set_rewards):
+            break
+
+    # reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
+    post_differential_deviation = numpy.std(set_rewards)
+    if post_differential_deviation > fresh_deviation:
+        p_sets = fresh_set
+        set_thresholds = fresh_thresholds
+        set_rewards = fresh_rewards
+
+    if max_index < len(packages) - 1 or post_differential_deviation > fresh_deviation:
         new_deviation = numpy.std(set_rewards)
-        if new_deviation >= cur_deviation:
-            while True:
-                prev_deviation = numpy.std(set_rewards)
-                reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
-                new_deviation = numpy.std(set_rewards)
+        while True:
+            prev_deviation = numpy.std(set_rewards)
+            reduce_deviation(readonly_package_dict, p_sets, set_thresholds, set_rewards, W)
+            new_deviation = numpy.std(set_rewards)
 
-                if prev_deviation == new_deviation:
-                    break
-
-        can_fit = can_still_fit_differential((n * W) - sum(set_thresholds), avail_packages)
-        print(can_fit)
+            if prev_deviation == new_deviation:
+                break
 
     return p_sets
 
@@ -195,7 +209,7 @@ def compute_reward(package_dict, p_set):
 
 
 def reduce_deviation(package_dict, p_sets, set_thresholds, set_rewards, W):
-    reward_sd = numpy.std(set_rewards)
+    # reward_sd = numpy.std(set_rewards)
     set_reward_ranking = numpy.argsort(set_rewards)
     set_combinations_left = choose(len(p_sets), 2)
     lower = 0
@@ -227,7 +241,8 @@ def reduce_deviation(package_dict, p_sets, set_thresholds, set_rewards, W):
                     print()
                 mrs_least_profitable = most_reward_set.pop(set_upper)
 
-                if (lrs_least_profitable[1] / lrs_least_profitable[2]) < (mrs_least_profitable[1] / mrs_least_profitable[2]) \
+                if (lrs_least_profitable[1] / lrs_least_profitable[2]) < (
+                        mrs_least_profitable[1] / mrs_least_profitable[2]) \
                         and (numpy.std([least_reward_set_reward - (lrs_least_profitable[1] + mrs_least_profitable[1]),
                                         most_reward_set_reward - (mrs_least_profitable[1] + lrs_least_profitable[1])])) \
                         and (lower_set_threshold - lrs_least_profitable[2] + mrs_least_profitable[2] <= W) \
@@ -336,6 +351,78 @@ def choose(n, k):
         return 0
     else:
         return choose(n - 1, k - 1) + choose(n - 1, k)
+
+
+def skewer(package_dict, p_sets, set_thresholds, set_rewards, W, avail_packages):
+    # threshold_ordering = numpy.argsort(set_thresholds)
+    is_rising = numpy.all(numpy.diff(numpy.argsort(set_thresholds)) >= 0)
+    cur_ordering = copy.deepcopy(set_thresholds)
+    while not is_rising:
+        if not can_still_fit(set_thresholds, avail_packages, W):
+            break
+
+        for i in range(len(p_sets) - 1, -1, -1):
+            if set_thresholds[i] < W:
+                # Check all sets to the left and find packages to shift to.
+                for j in range(i - 1, -1, -1):
+                    k = len(p_sets[j]) - 1
+                    while k > -1:
+                        if (package_dict[p_sets[j][k]][1] + set_thresholds[i]) <= W:
+                            set_thresholds[i] += package_dict[p_sets[j][k]][1]
+                            set_rewards[i] += package_dict[p_sets[j][k]][0]
+                            set_thresholds[j] -= package_dict[p_sets[j][k]][1]
+                            set_rewards[j] -= package_dict[p_sets[j][k]][0]
+                            p_sets[i].append(p_sets[j][k])
+                            p_sets[j].remove(p_sets[j][k])
+
+                        if set_thresholds[i] == W:
+                            break
+
+                        k -= 1
+
+                    if set_thresholds[i] == W:
+                        break
+        is_rising = numpy.all(numpy.diff(set_thresholds) >= 0)
+        new_ordering = copy.deepcopy(set_thresholds)
+
+        if cur_ordering == new_ordering:
+            break
+        else:
+            cur_ordering = new_ordering
+
+    if not is_rising:
+        is_falling = numpy.all(numpy.diff(numpy.argsort(set_thresholds[::-1])) >= 0)
+        while not is_falling:
+            if not can_still_fit(set_thresholds, avail_packages, W):
+                break
+            for i in range(len(p_sets) - 1):
+                if set_thresholds[i] < W:
+                    # Check all sets to the left and find packages to shift to.
+                    for j in range(i + 1, len(set_thresholds)):
+                        k = len(p_sets[j]) - 1
+                        while k > -1:
+                            if (package_dict[p_sets[j][k]][1] + set_thresholds[i]) <= W:
+                                set_thresholds[i] += package_dict[p_sets[j][k]][1]
+                                set_rewards[i] += package_dict[p_sets[j][k]][0]
+                                set_thresholds[j] -= package_dict[p_sets[j][k]][1]
+                                set_rewards[j] -= package_dict[p_sets[j][k]][0]
+                                p_sets[i].append(p_sets[j][k])
+                                p_sets[j].remove(p_sets[j][k])
+
+                            if set_thresholds[i] == W:
+                                break
+
+                            k -= 1
+
+                        if set_thresholds[i] == W:
+                            break
+            is_falling = numpy.all(numpy.diff(numpy.argsort(set_thresholds[::-1])) >= 0)
+            new_ordering = copy.deepcopy(set_thresholds)
+
+            if cur_ordering == new_ordering:
+                break
+            else:
+                cur_ordering = new_ordering
 
 
 # Adapted from Q1.
